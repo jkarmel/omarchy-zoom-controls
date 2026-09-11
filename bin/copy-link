@@ -2,9 +2,9 @@
 # Keep the Wayland clipboard owner alive after the invoking action exits.
 set -euo pipefail
 payload=$(mktemp "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/zoom-controls-clipboard.XXXXXX")
+trap 'rm -f "$payload"' EXIT
 chmod 600 "$payload"
 cat > "$payload"
-trap 'rm -f "$payload"' EXIT
 unit="zoom-controls-clipboard-$$-$RANDOM"
 systemd-run --user --quiet --collect --unit="$unit" bash -c '
   trap '\''rm -f "$1"'\'' EXIT

@@ -13,6 +13,9 @@ Tested on Omarchy 4, Qt 6.11.2, Chromium 151 and Node.js 26 on 2026-09-10.
   spaces is found; an unrelated profile is rejected.
 - Launcher arguments: portable and custom commands preserve argument boundaries.
 - Installer: isolated install, upgrade backup, removal, and preference retention.
+- Clipboard cleanup: closed input, partial input failure, and permission setup
+  failure leave no temporary payload behind. All three regressions reproduced
+  before the fix and pass with cleanup registered immediately after creation.
 - Qt Quick Test: seven checks passed on offscreen QPA with the software renderer.
   Screenshots of meeting, sharing, idle, and Join were reviewed. These do not
   validate compositor positioning or native chooser behavior.
