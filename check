@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "$0")"
+mkdir -p build
+node tests/config.test.mjs
+node tests/runtime.test.mjs
+node tests/home.test.mjs
+node tests/page.test.mjs
+python3 tests/install.test.py
+QT_QUICK_BACKEND=software QT_SCALE_FACTOR=1 /usr/lib/qt6/bin/qmltestrunner -input tests -import tests/imports -platform offscreen -o -,txt

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "${1:-status}" != status ]]; then
+  exec 9>"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/zoom-controls-action.lock"
+  if ! flock -n 9; then
+    printf '%s\n' '{"ok":false,"error":"Another Zoom action is still running."}'
+    exit 1
+  fi
+fi
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+exec node "$root/backend/zoom-controls.mjs" "$@"
