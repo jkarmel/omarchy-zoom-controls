@@ -20,7 +20,8 @@ The native Zoom desktop application is not supported.
 
 Dependencies: Omarchy 4 (Quickshell shell), Chromium, Node.js 22+, `uwsm`,
 `hyprctl`, `iproute2` (`ss`), `util-linux` (`flock`), `wl-clipboard`, and a
-working systemd user session. Install missing packages using Omarchy's package
+working systemd user session. The standalone installer also needs Python 3.
+Install missing packages using Omarchy's package
 manager. No npm packages, Zoom API keys, or browser extensions are required.
 
 From this repository's root, run:
