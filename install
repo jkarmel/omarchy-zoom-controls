@@ -16,9 +16,9 @@ if a.remove:
         shutil.rmtree(target)
     print('Removed widget. Preferences and Zoom browser data retained.')
 else:
-    for tool in ['node','chromium','uwsm-app','hyprctl','ss','flock','wl-copy','wl-paste','systemd-run','omarchy']:
+    for tool in ['python3','node','chromium','uwsm-app','hyprctl','ss','wl-copy','wl-paste','systemd-run','systemctl','omarchy']:
         if not shutil.which(tool):raise SystemExit('Missing dependency: '+tool)
-    version=subprocess.check_output(['node','-p','process.versions.node'],text=True).strip()
+    version=subprocess.check_output(['/usr/bin/node','-p','process.versions.node'],text=True).strip()
     if int(version.split('.')[0])<22:raise SystemExit('Node.js 22 or newer is required.')
     plugins.mkdir(parents=True,exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.zoom-controls-stage-',dir=plugins) as tmp:
@@ -26,7 +26,7 @@ else:
         stage.mkdir()
         for name in ['manifest.json','ZoomPanel.qml','MenuContent.qml','MenuModel.js','README.md','LICENSE','preview.png']:
             shutil.copy2(source/name,stage/name)
-        for name in ['backend','bin','docs']:shutil.copytree(source/name,stage/name)
+        for name in ['backend','bin','docs']:shutil.copytree(source/name,stage/name,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
         (stage/'.zoom-controls-install').write_text('1\n')
         omarchy('plugin','validate',str(stage))
         backup=None

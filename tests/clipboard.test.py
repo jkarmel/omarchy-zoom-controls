@@ -1,50 +1,65 @@
-"""Early clipboard failures must not retain temporary link data."""
+"""Clipboard failures never touch the desktop or retain the temporary link."""
+import importlib.util
+import io
 import os
 from pathlib import Path
-import subprocess
+import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
-
-HELPER = Path(__file__).resolve().parents[1] / 'bin/copy-link'
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+import clipboard
 
 
 class ClipboardCleanupTests(unittest.TestCase):
-    def check_failure(self, failing_tool=None, script=None, closed_stdin=False):
-        with tempfile.TemporaryDirectory(prefix='zoom-clipboard-test-') as tmp:
-            root = Path(tmp)
-            runtime = root / 'runtime'
-            runtime.mkdir(mode=0o700)
-            commands = root / 'bin'
-            commands.mkdir()
-            # Never start a real service or touch the desktop clipboard.
-            service = commands / 'systemd-run'
-            service.write_text('#!/bin/bash\ntouch "$XDG_RUNTIME_DIR/service-started"\nexit 99\n')
-            service.chmod(0o755)
-            if failing_tool:
-                stub = commands / failing_tool
-                stub.write_text('#!/bin/bash\n' + script + '\n')
-                stub.chmod(0o755)
-            env = dict(os.environ, XDG_RUNTIME_DIR=str(runtime),
-                       PATH=str(commands) + os.pathsep + os.environ['PATH'])
-            command = ['bash', str(HELPER)]
-            if closed_stdin:
-                command = ['bash', '-c', 'exec bash "$1" <&-', '_', str(HELPER)]
-            result = subprocess.run(command, input=b'https://zoom.us/j/123456789?pwd=test',
-                                    capture_output=True, env=env, timeout=5)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertFalse((runtime / 'service-started').exists())
-            self.assertEqual(list(runtime.iterdir()), [], 'Temporary link data remained after failure')
+    def test_input_failure_creates_no_payload(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, XDG_RUNTIME_DIR=tmp):
+            with patch.object(clipboard.sys, 'stdin') as stdin:
+                stdin.buffer.read.side_effect = OSError('input failed')
+                with self.assertRaises(OSError):
+                    clipboard.main()
+            self.assertEqual(list(Path(tmp).iterdir()), [])
 
-    def test_closed_input(self):
-        self.check_failure(closed_stdin=True)
+    def test_partial_write_failure_cleans_payload(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, XDG_RUNTIME_DIR=tmp):
+            original = os.fdopen
+            class BrokenWriter:
+                def __init__(self, fd, mode): self.stream = original(fd, mode)
+                def __enter__(self): return self
+                def __exit__(self, *args): self.stream.close()
+                def write(self, data):
+                    self.stream.write(data[:8])
+                    raise OSError('partial write failed')
+            with patch.object(clipboard.os, 'fdopen', BrokenWriter), patch.object(clipboard, 'supervise', return_value=(0,b'')):
+                with self.assertRaises(OSError): clipboard.copy(b'private-test-passcode')
+            self.assertEqual(list(Path(tmp).iterdir()), [])
 
-    def test_partial_input_failure(self):
-        self.check_failure('cat', "printf '%s' 'partial-meeting-passcode'; exit 1")
+    def test_service_failure_cleans_payload_and_stops_unit(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, XDG_RUNTIME_DIR=tmp):
+            calls=[]
+            def run(argv, *args):
+                calls.append(argv)
+                return (1,b'') if 'systemd-run' in argv[0] else (0,b'')
+            with patch.object(clipboard, 'supervise', side_effect=run):
+                with self.assertRaises(RuntimeError): clipboard.copy(b'private-test-passcode')
+            self.assertTrue(any('systemctl' in argv[0] for argv in calls))
+            self.assertEqual(list(Path(tmp).iterdir()), [])
 
-    def test_permission_setup_failure(self):
-        self.check_failure('chmod', 'exit 1')
+    def test_success_service_consumes_and_unlinks_payload(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, XDG_RUNTIME_DIR=tmp):
+            data=b'https://zoom.us/j/123456789?pwd=test'
+            def run(argv, *args):
+                if 'systemd-run' in argv[0]:
+                    payload=Path(argv[-1])
+                    self.assertEqual(payload.stat().st_mode & 0o777, 0o600)
+                    self.assertEqual(payload.read_bytes(),data)
+                    payload.unlink()
+                    return 0,b''
+                if 'wl-paste' in argv[0]: return 0,data
+                self.fail('Successful handoff should not stop the service')
+            with patch.object(clipboard, 'supervise', side_effect=run): clipboard.copy(data)
+            self.assertEqual(list(Path(tmp).iterdir()), [])
 
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == '__main__': unittest.main()

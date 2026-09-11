@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui as Ui
@@ -22,6 +23,19 @@ Ui.Panel {
   property string feedback: ""
   property bool feedbackError: false
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("bin/zoom-controls").toString().replace(/^file:\/\//, ""))
+  readonly property var helperEnvironment: {
+    const result = {PATH: "/usr/bin"}
+    const keys = ["HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "LC_CTYPE", "DISPLAY",
+      "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "XDG_CONFIG_HOME", "XDG_DATA_HOME",
+      "XDG_STATE_HOME", "XDG_CACHE_HOME", "XDG_SESSION_TYPE", "XDG_CURRENT_DESKTOP",
+      "DBUS_SESSION_BUS_ADDRESS", "HYPRLAND_INSTANCE_SIGNATURE", "OMARCHY_REQUEST_WORKSPACE",
+      "ZOOM_CONTROLS_CONFIG"]
+    for (const key of keys) {
+      const value = Quickshell.env(key)
+      if (value !== "") result[key] = value
+    }
+    return result
+  }
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -44,8 +58,14 @@ Ui.Panel {
   Timer { interval: root.opened ? 1000 : 2500; running: true; repeat: true; onTriggered: root.refresh() }
   Process {
     id: poll
+    clearEnvironment: true
+    environment: root.helperEnvironment
     command: [root.helper, "status"]
+    onRunningChanged: if (running) pollDeadline.restart(); else pollDeadline.stop()
     stdout: StdioCollector {
+      // The external supervisor bounds bytes before forwarding any output.
+      waitForEnd: false
+      onDataChanged: if (text.length > 65536) poll.signal(15)
       onStreamFinished: {
         try {
           const s = JSON.parse(text)
@@ -57,7 +77,11 @@ Ui.Panel {
   }
   Process {
     id: actionProcess
+    clearEnvironment: true
+    environment: root.helperEnvironment
     stdout: StdioCollector {
+      waitForEnd: false
+      onDataChanged: if (text.length > 65536) actionProcess.signal(15)
       onStreamFinished: {
         try {
           const r = JSON.parse(text)
@@ -67,8 +91,14 @@ Ui.Panel {
         if (root.feedbackError && !root.opened) root.open()
       }
     }
-    onRunningChanged: if (!running) Qt.callLater(function() { root.refresh(); clearFeedback.restart() })
+    onRunningChanged: {
+      if (running) actionDeadline.restart()
+      else { actionDeadline.stop(); Qt.callLater(function() { root.refresh(); clearFeedback.restart() }) }
+    }
   }
+  // Independent shell deadlines cover a stalled or broken helper supervisor.
+  Timer { id: pollDeadline; interval: 10000; onTriggered: poll.signal(15) }
+  Timer { id: actionDeadline; interval: 65000; onTriggered: actionProcess.signal(15) }
   Timer { id: clearFeedback; interval: 7000; onTriggered: root.feedback = "" }
   Ui.BarIconButton {
     id: button

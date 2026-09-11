@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 import {readFile,readlink,mkdir} from 'node:fs/promises';
-import {execFile as execCb, spawn} from 'node:child_process';
-import {promisify} from 'node:util';
+import {exec,launchBrowser} from './execution.mjs';
+import {targetsAt,pageState} from './protocol.mjs';
 import {pathToFileURL,fileURLToPath} from 'node:url';
 import {loadConfig} from './config.mjs';
 import {CDP} from './cdp.mjs';
 import {zoomPage} from './page.mjs';
 import {meetingLink, meetingDestination, zoomHome} from './home.mjs';
-const exec=promisify(execCb);
 let config, configError;
 try {config=await loadConfig();} catch(e) {configError=e;config={};}
 const profile=config.profile;
@@ -37,7 +36,7 @@ async function endpoints(){
     if(raw.includes('--user-data-dir='+profile)&&!raw.includes('--type='))pids.add(pid);
   }catch{}
   if(!pids.size)return [];
-  const {stdout}=await exec('ss',['-ltnp'],{timeout:1500});
+  const {stdout}=await exec('/usr/bin/ss',['-ltnp'],{timeout:1500});
   const result=[];
   for(const line of stdout.split('\n')) {
     if(![...line.matchAll(/pid=(\d+)/g)].some(m=>pids.has(m[1])))continue;
@@ -48,30 +47,31 @@ async function endpoints(){
 }
 export async function discover(){
   const urls=await endpoints();
+  if(urls.length>8)throw new Error('Too many browser debugging endpoints.');
   if(!urls.length)return {state:'offline', title:'Zoom is not connected', capabilities:{}};
   const found=[];
   let failed=false;
   for(const url of urls){
     try {
-      const targets=await(await fetch(url+'/json/list',{signal:AbortSignal.timeout(2000)})).json();
+      const targets=await targetsAt(url);
       for(const t of targets){
         if(t.type!=='page')continue;
         const u=new URL(t.url);
         if(u.protocol!=='https:'||!/(^|\.)zoom\.us$/.test(u.hostname))continue;
-        const c=await CDP.connect(t.webSocketDebuggerUrl);
-        try{const state=await c.evaluate('('+zoomPage.toString()+')()');found.push({...state,target:t.id,ws:t.webSocketDebuggerUrl})}finally{c.close()}
+        const c=await CDP.connect(t.webSocketDebuggerUrl,url);
+        try{const state=pageState(await c.evaluate('('+zoomPage.toString()+')()'));found.push({...state,target:t.id,ws:t.webSocketDebuggerUrl,endpoint:url})}finally{c.close()}
       }
     }catch{failed=true}
   }
   const meetings=found.filter(s=>s.state==='meeting');
   if(meetings.length>1)return {state:'unknown',title:'Multiple Zoom meetings — open Zoom',capabilities:{}};
-  if(meetings.length===1)return meetings[0];
   if(failed)return {state:'unknown',title:'Unable to read Zoom controls',capabilities:{}};
+  if(meetings.length===1)return meetings[0];
   return found[0]||{state:'idle',title:'No active meeting',capabilities:{}};
 }
 async function clipboardMeeting() {
   try {
-    const {stdout}=await exec('wl-paste',['--no-newline'],{timeout:1000,maxBuffer:8192});
+    const {stdout}=await exec('/usr/bin/wl-paste',['--no-newline'],{timeout:1000,maxBuffer:8192});
     return meetingLink(stdout);
   } catch { return null; }
 }
@@ -89,7 +89,7 @@ async function homeAction(action) {
     await new Promise(r=>setTimeout(r,200));
   }
   if(state.state!=='idle'||!state.ws)throw new Error('Zoom is not ready. Open Zoom and sign in first.');
-  const c=await CDP.connect(state.ws);
+  const c=await CDP.connect(state.ws,state.endpoint);
   try {
     // A second check catches a meeting that started while the window opened.
     const current=await c.evaluate('('+zoomPage.toString()+')()');
@@ -127,20 +127,21 @@ async function homeAction(action) {
 }
 async function showZoom(){
   if(config.launcher) {
-    await exec(config.launcher[0],config.launcher.slice(1),{timeout:40000});
+    await exec(config.launcher[0],config.launcher.slice(1),{timeout:40000,custom:true});
     return;
   }
   const state=await discover();
   if(state.ws) {
-    const c=await CDP.connect(state.ws);
+    const c=await CDP.connect(state.ws,state.endpoint);
     try {await c.call('Page.bringToFront');}finally{c.close();}
-    const {stdout}=await exec('hyprctl',['clients','-j'],{timeout:2000});
+    const {stdout}=await exec('/usr/bin/hyprctl',['clients','-j'],{timeout:2000});
     for(const client of JSON.parse(stdout)) {
       try {
         const argv=(await readFile('/proc/'+client.pid+'/cmdline','utf8')).split('\0');
         const lockPid=(await readlink(profile+'/SingletonLock').catch(()=>'' )).match(/-(\d+)$/)?.[1];
+        if(!/^0x[0-9a-f]+$/i.test(client.address))continue;
         if(!argv.includes('--user-data-dir='+profile)&&!(String(client.pid)===lockPid&&argv.join(' ').includes('--user-data-dir='+profile)))continue;
-        await exec('hyprctl',['dispatch','hl.dsp.focus({ window = "address:'+client.address+'" })'],{timeout:2000});
+        await exec('/usr/bin/hyprctl',['dispatch','hl.dsp.focus({ window = "address:'+client.address+'" })'],{timeout:2000});
         return;
       }catch{}
     }
@@ -151,9 +152,7 @@ async function showZoom(){
   const args=['--ozone-platform=wayland','--no-first-run','--no-default-browser-check',
     '--remote-debugging-address=127.0.0.1','--remote-debugging-port=0',
     '--user-data-dir='+profile,'--class=zoom-controls-chromium','--new-window','https://app.zoom.us/wc/home'];
-  const p=spawn('uwsm-app',['--',config.browser,...args],{detached:true,stdio:'ignore'});
-  await new Promise((resolve,reject)=>{p.once('spawn',resolve);p.once('error',reject)});
-  p.unref();
+  await launchBrowser(config.browser,args);
 }
 async function main(){
   if(configError)throw configError;
@@ -161,10 +160,10 @@ async function main(){
   if(['start','join','join-clipboard'].includes(action))return homeAction(action);
   const state=await discover();
   const token=state.target&&state.meeting?JSON.stringify([state.target,state.meeting]):'';
-  if(action==='status') {const {ws,meeting,target,...publicState}=state;return {...publicState,clipboardMeeting:['idle','offline'].includes(state.state)?!!await clipboardMeeting():false,token,checkedAt:Date.now()}}
+  if(action==='status') {const {ws,endpoint,meeting,target,...publicState}=state;return {...publicState,clipboardMeeting:['idle','offline'].includes(state.state)?!!await clipboardMeeting():false,token,checkedAt:Date.now()}}
   if(state.state!=='meeting'||!token||token!==expected)throw new Error('The meeting changed or is unavailable. Reopen the Zoom menu.');
   if(['share','chat','participants'].includes(action))await showZoom();
-  const c=await CDP.connect(state.ws);
+  const c=await CDP.connect(state.ws,state.endpoint);
   try{
     let result;
     try { result=await c.evaluate('('+zoomPage.toString()+')('+JSON.stringify(action)+','+JSON.stringify(state.meeting)+')',true); }
@@ -182,7 +181,10 @@ async function main(){
     }
     if(!result.ok) throw new Error('Zoom is no longer in that meeting. Reopen the menu.');
     if(result.link){
-      await new Promise((resolve,reject)=>{const cmd=config.clipboardCommand||[fileURLToPath(new URL('../bin/copy-link',import.meta.url))];const p=spawn(cmd[0],cmd.slice(1),{stdio:['pipe','ignore','pipe']});p.on('error',reject);p.on('close',code=>code===0?resolve():reject(new Error('Could not copy the invite link.')));p.stdin.on('error',reject);p.stdin.end(result.link)});
+      const link=meetingLink(result.link);
+      if(!link||link.length>8192)throw new Error('Zoom did not provide a valid invite link.');
+      const cmd=config.clipboardCommand||[fileURLToPath(new URL('../bin/copy-link',import.meta.url))];
+      await exec(cmd[0],cmd.slice(1),{timeout:10000,maxBuffer:8192,custom:true,input:link});
       return {ok:true,message:'Invite link copied'};
     }
     return {...result,message:action==='share'?'Choose what to share in Zoom':''};

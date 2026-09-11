@@ -1,6 +1,7 @@
 # Validation
 
-Tested on Omarchy 4, Qt 6.11.2, Chromium 151 and Node.js 26 on 2026-09-10.
+Tested on Omarchy 4, Qt 6.11.2, Chromium 151 and Node.js 26.
+Original live checks: 2026-09-10. Security update checks: 2026-09-11.
 
 ## Automated and isolated checks
 
@@ -13,9 +14,8 @@ Tested on Omarchy 4, Qt 6.11.2, Chromium 151 and Node.js 26 on 2026-09-10.
   spaces is found; an unrelated profile is rejected.
 - Launcher arguments: portable and custom commands preserve argument boundaries.
 - Installer: isolated install, upgrade backup, removal, and preference retention.
-- Clipboard cleanup: closed input, partial input failure, and permission setup
-  failure leave no temporary payload behind. All three regressions reproduced
-  before the fix and pass with cleanup registered immediately after creation.
+- Clipboard cleanup: failed input, partial writes, failed service startup, and
+  successful handoff are covered without touching the desktop clipboard.
 - Qt Quick Test: seven checks passed on offscreen QPA with the software renderer.
   Screenshots of meeting, sharing, idle, and Join were reviewed. These do not
   validate compositor positioning or native chooser behavior.
@@ -46,3 +46,24 @@ depend on Zoom's normal UI and are not automated by the widget.
 
 Both test meetings were left, and the temporary test tab and QA window were
 closed. The user's existing launcher/profile/clipboard overrides remain active.
+
+## Version 1.2.1 review fixes
+
+- Real local HTTP fixture rejects redirects without contacting the redirect
+  destination, oversized lists, malformed JSON, excessive targets, and endpoint
+  or target-ID mismatches.
+- WebSocket tests cover rejection of excessive declared frame sizes before any
+  payload arrives, fragmented messages, and malformed CDP responses. All existing
+  meeting DOM tests also pass against real headless Chromium through this transport.
+- Seven subprocess tests cover environment and PATH injection, unsafe executable
+  permissions, stdout/stderr floods, stalled stdin, argument boundaries, timeout
+  cleanup, and nested process groups. Children ignoring SIGTERM are still killed.
+- Four isolated clipboard tests cover input/write/service failures and handoff.
+- A real systemd clipboard service was exercised against a private headless Weston
+  desktop. After the helper exited, wl-paste still returned the exact synthetic
+  test link. The real desktop clipboard was not changed. Weston was then stopped.
+- Current local Zoom discovery returned idle through the bounded wrapper, with the
+  existing profile override. Both explicit local helper paths passed validation.
+- QML lint, manifest validation, and seven offscreen menu checks passed. This update
+  changes process handling, not the menu layout. Live meeting actions from the
+  earlier section were not repeated in a new meeting for this update.

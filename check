@@ -2,6 +2,8 @@
 set -euo pipefail
 cd -- "$(dirname -- "$0")"
 mkdir -p build
+node tests/security.test.mjs
+python3 tests/supervisor.test.py
 node tests/config.test.mjs
 node tests/runtime.test.mjs
 node tests/home.test.mjs

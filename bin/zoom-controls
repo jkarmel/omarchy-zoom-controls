@@ -1,11 +1,31 @@
-#!/usr/bin/env bash
-set -euo pipefail
-if [[ "${1:-status}" != status ]]; then
-  exec 9>"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/zoom-controls-action.lock"
-  if ! flock -n 9; then
-    printf '%s\n' '{"ok":false,"error":"Another Zoom action is still running."}'
-    exit 1
-  fi
-fi
-root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-exec node "$root/backend/zoom-controls.mjs" "$@"
+#!/usr/bin/python3 -I
+import fcntl
+import json
+import os
+from pathlib import Path
+import sys
+
+root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root / 'backend'))
+from runtime import environment, executable, supervise
+
+try:
+    action = sys.argv[1] if len(sys.argv) > 1 else 'status'
+    if action != 'status':
+        runtime = Path(os.environ.get('XDG_RUNTIME_DIR', '/run/user/' + str(os.getuid())))
+        fd = os.open(runtime / 'zoom-controls-action.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    code, output = supervise([executable('node'), str(root / 'backend/zoom-controls.mjs'), *sys.argv[1:]],
+                             8 if action == 'status' else 60, 65536, environment())
+    result = json.loads(output)
+    if not isinstance(result, dict):
+        raise ValueError('Invalid Zoom response.')
+    encoded = json.dumps(result, ensure_ascii=False)
+    if len(encoded.encode('utf-8')) > 65536:
+        raise ValueError('Zoom response exceeded its output limit.')
+    print(encoded)
+    sys.exit(code)
+except Exception as error:
+    print(json.dumps({'ok': False, 'state': 'unknown', 'capabilities': {},
+                      'error': 'Another Zoom action is still running.' if isinstance(error, BlockingIOError) else str(error)}))
+    sys.exit(1)

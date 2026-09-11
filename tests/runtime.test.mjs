@@ -17,15 +17,11 @@ try {
  await writeFile(config,JSON.stringify({profile:tmp+'/different-profile'}));
  assert.equal((await run('status')).state,'offline','Does not attach to another profile');
  const bin=tmp+'/bin';await mkdir(bin);
- await writeFile(bin+'/uwsm-app','#!/bin/sh\nprintf "%s\\n" "$@" > "$ZOOM_TEST_ARGS"\n',{mode:0o755});
- env.PATH=bin+':'+process.env.PATH;env.ZOOM_TEST_ARGS=tmp+'/args';
- await run('show');
- let args;for(let n=0;n<30;n++){try{args=await readFile(env.ZOOM_TEST_ARGS,'utf8');break}catch{await new Promise(r=>setTimeout(r,30))}}
- assert.ok(args.includes('--remote-debugging-port=0\n'));assert.ok(args.includes('--user-data-dir='+tmp+'/different-profile\n'));
- assert.ok(args.includes('--remote-debugging-address=127.0.0.1\n'));
- await writeFile(config,JSON.stringify({profile:tmp+'/different-profile',launcher:[bin+'/uwsm-app','custom argument with spaces']}));
- await run('show');assert.equal(await readFile(env.ZOOM_TEST_ARGS,'utf8'),'custom argument with spaces\n');
+ const launcher=bin+'/custom-launcher';const captured=tmp+'/args';
+ await writeFile(launcher,'#!/usr/bin/python3 -I\nimport sys\nopen('+JSON.stringify(captured)+',"w").write("\\n".join(sys.argv[1:])+"\\n")\n',{mode:0o755});
+ await writeFile(config,JSON.stringify({profile:tmp+'/different-profile',launcher:[launcher,'custom argument with spaces']}));
+ await run('show');assert.equal(await readFile(captured,'utf8'),'custom argument with spaces\n');
  await writeFile(config,'{invalid');
  try{await run('status');assert.fail('Expected invalid config error')}catch(e){assert.equal(JSON.parse(e.stdout).ok,false)}
- console.log('PASS: exact profile discovery, unrelated browser rejection, default/custom launcher argv, config errors');
-}finally{const exited=once(browser,'exit');browser.kill();await exited;await rm(tmp,{recursive:true,force:true})}
+ console.log('PASS: exact profile discovery, unrelated browser rejection, explicit custom launcher argv, config errors');
+}finally{const exited=once(browser,'exit');browser.kill();await exited;await rm(tmp,{recursive:true,force:true,maxRetries:5,retryDelay:100})}

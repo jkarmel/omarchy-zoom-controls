@@ -1,21 +1,11 @@
-#!/usr/bin/env bash
-# Keep the Wayland clipboard owner alive after the invoking action exits.
-set -euo pipefail
-payload=$(mktemp "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/zoom-controls-clipboard.XXXXXX")
-trap 'rm -f "$payload"' EXIT
-chmod 600 "$payload"
-cat > "$payload"
-unit="zoom-controls-clipboard-$$-$RANDOM"
-systemd-run --user --quiet --collect --unit="$unit" bash -c '
-  trap '\''rm -f "$1"'\'' EXIT
-  wl-copy --type text/plain --foreground < "$1"
-' _ "$payload"
-for ((n=0;n<20;n++)); do
-  if cmp -s "$payload" <(timeout 1 wl-paste --no-newline 2>/dev/null); then
-    trap - EXIT
-    exit 0
-  fi
-  sleep .1
-done
-systemctl --user stop "$unit" >/dev/null 2>&1 || true
-exit 1
+#!/usr/bin/python3 -I
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+from clipboard import main
+try:
+    sys.exit(main())
+except Exception:
+    # Do not print clipboard payloads or tool stderr.
+    print('Could not copy the invite link.', file=sys.stderr)
+    sys.exit(1)

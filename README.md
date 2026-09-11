@@ -19,9 +19,8 @@ The native Zoom desktop application is not supported.
 ## Install
 
 Dependencies: Omarchy 4 (Quickshell shell), Chromium, Node.js 22+, `uwsm`,
-`hyprctl`, `iproute2` (`ss`), `util-linux` (`flock`), `wl-clipboard`, and a
-working systemd user session. The standalone installer also needs Python 3.
-Install missing packages using Omarchy's package
+`hyprctl`, `iproute2` (`ss`), `wl-clipboard`, Python 3.11+, and a
+working systemd user session. Install missing packages using Omarchy's package
 manager. No npm packages, Zoom API keys, or browser extensions are required.
 
 From this repository's root, run:
@@ -55,8 +54,15 @@ Optional settings: `~/.config/zoom-controls/config.json` (respects
 
 Omit these settings to use the included defaults. `browser` can select a
 Chromium-compatible executable. Commands are argument arrays, never shell code;
-`~` is expanded at the start of paths. A custom launcher must use the configured
-profile, expose a loopback DevTools listener (`--remote-debugging-port=0`), and
+`~` is expanded at the start of paths. Bare executable names resolve only in
+`/usr/bin`; use an absolute path for a custom user script. Executables and their
+parent directories must be owned by root or, for explicit overrides, your user,
+and must not be writable by other users. The root-owned sticky temporary
+directory is allowed as a parent of a private directory. Child commands receive
+a small allowlist of session variables and `PATH=/usr/bin`; shell startup,
+loader, Python, and Node injection variables are excluded.
+
+A custom launcher must use the configured profile, expose a loopback DevTools listener (`--remote-debugging-port=0`), and
 show the existing meeting window without creating duplicate windows. The
 clipboard command receives the invite URL on stdin and must retain ownership
 after returning. `ZOOM_CONTROLS_CONFIG` selects an alternate config for testing.
@@ -82,7 +88,9 @@ Remote debugging lets local processes control that dedicated browser profile;
 use it for Zoom rather than general browsing. Copied links can contain meeting
 passcodes. Status includes only a boolean for clipboard-link availability, not
 the URL; clipboard contents are revalidated on click. The built-in clipboard
-helper uses a private temporary runtime file until clipboard ownership ends.
+helper hands off through a private temporary runtime file, which is deleted
+as soon as the clipboard service reads it. Link bytes are sent on stdin, not
+placed in service command arguments.
 Your desktop clipboard history may retain copied links under its own settings.
 
 Zoom UI changes can require selector updates. Waiting rooms, sign-in, meeting
@@ -90,6 +98,27 @@ passcodes, host transfer, and other Zoom prompts remain in Zoom. "Opening
 meeting" means navigation began, not that admission to the meeting succeeded.
 Meeting IDs must contain 9–11 digits. Supported links are HTTPS `zoom.us` links
 using `/j/ID`, `/wc/join/ID`, or `/my/name`.
+
+## Execution limits
+
+Each menu poll has an 8-second outer deadline; actions have 60 seconds. Both
+collect at most 64 KiB of combined child output before returning bounded JSON
+to QML, which also has independent 10/65-second timers. Clipboard commands have
+10 seconds. Timeout, excessive output, and termination clean up the supervised
+process groups, including nested helper groups in the same private session.
+Persistent browser and clipboard ownership services are intentionally separate.
+Custom launchers that explicitly detach into another session remain responsible
+for those detached processes.
+
+Debug target lists and WebSocket messages are capped at 256 KiB, with at most
+64 targets. HTTP redirects are refused. Each page WebSocket must match the
+exact discovered loopback host, port, protocol, and target ID. WebSocket frame
+lengths and fragmented-message totals are checked before buffering their bodies;
+unexpected target, CDP, and page-state schemas are rejected.
+
+These controls bound accidental or malformed responses. They do not sandbox
+user-selected scripts or protect against another process with full control of
+your account. See [review fixes](docs/SECURITY-REVIEW.md).
 
 ## Development
 

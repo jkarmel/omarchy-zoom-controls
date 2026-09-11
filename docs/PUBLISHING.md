@@ -1,24 +1,16 @@
-# Marketplace preparation
+# Marketplace submission
 
-Suggested listing name: Zoom Controls
+Listing name: Zoom Controls
 Category: Productivity
 Tags: bar, quickshell, launcher
 Plugin ID: jkarmel.zoom-controls
 
-Suggested description:
-Start and join Zoom meetings from the Omarchy bar, then control your microphone,
-camera, invite link, sharing, chat, participants, and leaving. Supports the English
-Zoom web app in a dedicated Chromium profile, with optional custom launchers.
+Repository: https://github.com/jkarmel/omarchy-zoom-controls
+Submission: https://github.com/omacom/omarchy-plugin-marketplace/issues/6283
 
-The repository contains the root manifest, README, MIT license, preview image,
-installer/remover, and tests. Local browser profiles, preferences, meeting links,
-private QA captures, and machine backups are excluded.
+Version 1.2.1 addresses the maintainer's endpoint validation, executable identity,
+and subprocess lifetime requests. See [review fixes](SECURITY-REVIEW.md) and
+[QA results](QA.md). Publication remains subject to marketplace maintainer approval.
 
-Before submitting:
-1. Publish this repository under the owner's chosen public GitHub account.
-2. Use the current marketplace submission form, including the actual repository
-   URL, screenshot, dependency declarations, and the owner's checklist review.
-
-This file is a preparation note, not a submitted marketplace listing.
-
-Live sharing/stop and admitted joining passed on 2026-09-10; see QA.md.
+Local browser profiles, preferences, meeting links, private QA captures, and machine
+backups are excluded from the public repository.
