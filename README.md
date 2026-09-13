@@ -30,7 +30,19 @@ From this repository's root, run:
 ```
 
 The installer validates and enables `jkarmel.zoom-controls`, keeps a backup of
-an existing widget, and leaves your preferences and browser data intact. When
+an existing installer-owned widget, and leaves your preferences and browser data
+intact. It resolves system tools to validated absolute paths and rejects symlinked
+configuration directories, target folders, markers and source files. Directory
+handles remain open throughout staging, validation, replacement and removal;
+exclusive renames cannot overwrite an entry that appears during a race. A failed
+activation restores the previous package where the target has not been replaced
+externally. Unexpected entries and recovery copies are retained instead of deleted.
+
+Use `./install --files-only` to upgrade the files while preserving the current
+bar enablement/layout, or for a headless installation. `--remove --files-only`
+removes only the owned package without calling the live shell. Running the
+installer explicitly opts into the documented package and enable/disable changes;
+no preferences or browser profiles are rewritten. When
 updating, Omarchy can retain old QML code; run `omarchy restart shell` if needed.
 Open the camera icon and choose **Open Zoom**, then sign in once.
 

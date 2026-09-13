@@ -67,3 +67,28 @@ closed. The user's existing launcher/profile/clipboard overrides remain active.
 - QML lint, manifest validation, and seven offscreen menu checks passed. This update
   changes process handling, not the menu layout. Live meeting actions from the
   earlier section were not repeated in a new meeting for this update.
+
+## Version 1.2.2 installer review fixes
+
+Checked September 13, 2026. `./check` passed in full, including the existing real
+HTTP/WebSocket/Chromium DOM fixtures, seven supervisor tests, four clipboard
+failure/handoff tests and seven Qt Quick Test checks.
+
+The replacement installer suite has **19 passing tests**. It runs the real system
+validator and real file operations in temporary configuration trees. Headless
+`--files-only` installs exercise the actual CLI and preserve preferences without
+changing the live shell. Activation/disable failures are injected in-process.
+Race tests deliberately swap ancestors, targets, candidates or destination entries
+at transaction boundaries and verify that external/replacement files survive.
+Other cases cover ownership markers, symlinks, FIFOs, input bounds, hostile PATH
+and startup files, upgrade backups, removal and rollback. These deterministic
+probes test specific race boundaries; they are not an exhaustive concurrency proof.
+
+Manifest validation, Python compilation and `git diff --check` passed. This update
+changes the installer and adds optional cwd/descriptor arguments to the existing
+subprocess supervisor; meeting controls and UI are unchanged. New live Zoom
+meetings were not started for this installer update.
+
+The installed local widget was upgraded with `--files-only`. Preference and bar
+configuration hashes remained unchanged; installed files matched the release
+source, and bounded status discovery returned idle.

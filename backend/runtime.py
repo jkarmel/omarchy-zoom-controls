@@ -42,12 +42,14 @@ def executable(value, custom=False):
     return str(path)
 
 
-def supervise(argv, timeout, limit, env=None, input_data=None, shared_session=False):
+def supervise(argv, timeout, limit, env=None, input_data=None, shared_session=False,
+              cwd=None, pass_fds=()):
     """Capture a bounded combined stdout/stderr budget and reap the whole group."""
     proc = subprocess.Popen(argv, stdin=None if input_data is None else subprocess.PIPE,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             start_new_session=not shared_session,
                             process_group=0 if shared_session else None,
+                            cwd=cwd, pass_fds=pass_fds,
                             env=environment() if env is None else env)
     old_handlers = {}
     def interrupted(signum, frame):
