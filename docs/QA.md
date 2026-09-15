@@ -92,3 +92,13 @@ meetings were not started for this installer update.
 The installed local widget was upgraded with `--files-only`. Preference and bar
 configuration hashes remained unchanged; installed files matched the release
 source, and bounded status discovery returned idle.
+
+## Version 1.2.3 plain-text review fix
+
+Checked September 15, 2026. `./check` passed in full, including the real HTTP/WebSocket/Chromium DOM fixtures, seven supervisor tests, 19 installer tests, four clipboard tests, and nine Qt Quick Test results (including setup/cleanup).
+
+The two new data-driven QML cases send formatting/entity markup and an image tag through both the meeting title and feedback fields. They assert literal content and `Text.PlainText`, cover success/error feedback and the busy message, and fail on Qt warnings. Before the fix, the regression failed and Qt attempted to open the image URL from both fields; after the fix, the cases passed without warnings.
+
+Runner: Qt Quick Test / Qt 6.11.2, offscreen QPA, software renderer, scale factor 1, and the existing repository theme fixtures. Reviewed `build/plain-text-formatting.png`, `build/plain-text-image.png`, and `build/meeting-dark.png`: markup displays literally and ordinary meeting controls retain their layout. These checks do not validate compositor placement or hardware rendering. No live Zoom meeting was started.
+
+`qmllint -I tests/imports MenuContent.qml`, `omarchy plugin validate`, and `git diff --check` passed.

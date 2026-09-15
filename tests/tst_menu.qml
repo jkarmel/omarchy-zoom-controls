@@ -42,6 +42,24 @@ Rectangle {
       menu.moveCursor(1);compare(menu.cursor,1)
       menu.activate(0);compare(spy.count,0)
     }
+    function test_external_text_is_plain_data() {
+      return [
+        {tag:"formatting", payload:"<b>Weekly</b> &amp; <i>planning</i>", error:false},
+        {tag:"image", payload:'<img src="file:///zoom-controls-test-missing-image.png">', error:true}
+      ]
+    }
+    function test_external_text_is_plain(data) {
+      failOnWarning(/.*/)
+      var state=meeting(false);state.title=data.payload;menu.meetingState=state
+      menu.feedback=data.payload;menu.feedbackError=data.error
+      var title=findChild(menu,"meetingTitle"), feedback=findChild(menu,"feedbackText")
+      verify(title);verify(feedback)
+      compare(title.text,data.payload);compare(feedback.text,data.payload)
+      compare(title.textFormat,Text.PlainText);compare(feedback.textFormat,Text.PlainText)
+      verify(waitForRendering(menu))
+      grabImage(scene).save('build/plain-text-'+data.tag+'.png')
+      menu.busy=true;compare(feedback.text,"Working…");compare(feedback.textFormat,Text.PlainText)
+    }
     function test_visuals() {
       Color.foreground="#e4e8ef";Color.background="#171b23";Color.accent="#86baff";Color.urgent="#f07c85"
       menu.meetingState=meeting(false)

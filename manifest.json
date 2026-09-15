@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "jkarmel.zoom-controls",
   "name": "Zoom Controls",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "author": "Jeremy Karmel",
   "description": "Start or join Zoom meetings and control microphone, camera and sharing from the bar.",
   "kinds": [

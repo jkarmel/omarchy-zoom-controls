@@ -1,4 +1,10 @@
-# Marketplace installer review fixes in 1.2.2
+# Plain-text review fix in 1.2.3
+
+Addresses the September 15 review of `28b342e` on submission #6283. Every `Text` element in `MenuContent.qml` now explicitly uses `Text.PlainText`, including the meeting title and the feedback/error field. Page- or helper-derived strings display literally; they are not interpreted as rich text or image references. The bar tooltip is built only from fixed strings in `MenuModel.summary`.
+
+The offscreen regression supplies formatting/entity markup and an image tag to both external-text fields, checks their literal text and plain-text mode, and treats Qt warnings as failures. Before the fix, both cases failed and the image case produced resource-loading warnings from both fields. With the fix, both cases pass without warnings. Rendered screenshots show the markup literally. See [QA.md](QA.md) for validation details.
+
+## Marketplace installer review fixes in 1.2.2
 
 Addresses the remaining installer findings on submission #6283 at `c83ec9a`.
 

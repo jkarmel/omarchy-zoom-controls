@@ -42,7 +42,7 @@ Column {
     Row {
       width: parent.width
       spacing: Style.space(8)
-      Text { text: "Zoom"; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.title; font.bold: true }
+      Text { textFormat: Text.PlainText; text: "Zoom"; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.title; font.bold: true }
       Rectangle {
         visible: root.meetingState.state === "meeting"
         anchors.verticalCenter: parent.verticalCenter
@@ -50,11 +50,11 @@ Column {
         height: liveText.implicitHeight + Style.space(5)
         radius: Style.space(4)
         color: root.tint(root.meetingState.sharing ? Color.urgent : Color.accent, 0.17)
-        Text { id: liveText; anchors.centerIn: parent; text: root.meetingState.sharing ? "SHARING" : "IN MEETING"; color: root.meetingState.sharing ? Color.urgent : Color.accent; font.family: root.themeFont.family; font.pixelSize: root.themeFont.caption; font.bold: true }
+        Text { textFormat: Text.PlainText; id: liveText; anchors.centerIn: parent; text: root.meetingState.sharing ? "SHARING" : "IN MEETING"; color: root.meetingState.sharing ? Color.urgent : Color.accent; font.family: root.themeFont.family; font.pixelSize: root.themeFont.caption; font.bold: true }
       }
     }
-    Text { width: parent.width; text: root.meetingState.title || "Open Zoom to connect"; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight }
-    Text { width: parent.width; text: Model.summary(root.meetingState); color: Color.foreground; opacity: 0.65; font.family: root.themeFont.family; font.pixelSize: root.themeFont.caption; wrapMode: Text.Wrap }
+    Text { textFormat: Text.PlainText; objectName: "meetingTitle"; width: parent.width; text: root.meetingState.title || "Open Zoom to connect"; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight }
+    Text { textFormat: Text.PlainText; width: parent.width; text: Model.summary(root.meetingState); color: Color.foreground; opacity: 0.65; font.family: root.themeFont.family; font.pixelSize: root.themeFont.caption; wrapMode: Text.Wrap }
   }
   Rectangle { width: parent.width; height: 1; color: root.tint(Color.foreground, 0.15) }
   Column {
@@ -81,8 +81,8 @@ Column {
           leftPadding: Style.space(9)
           spacing: Style.space(11)
           opacity: row.enabled ? 1 : 0.4
-          Text { anchors.verticalCenter: parent.verticalCenter; width: Style.space(23); text: row.modelData.icon; color: row.modelData.danger ? Color.urgent : Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.title }
-          Text { anchors.verticalCenter: parent.verticalCenter; text: row.modelData.label; color: row.modelData.danger ? Color.urgent : Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body }
+          Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; width: Style.space(23); text: row.modelData.icon; color: row.modelData.danger ? Color.urgent : Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.title }
+          Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: row.modelData.label; color: row.modelData.danger ? Color.urgent : Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body }
         }
       }
     }
@@ -115,7 +115,7 @@ Column {
         text: "Join"
         enabled: !root.busy && joinField.text.trim() !== ""
         onClicked: root.submitJoin()
-        contentItem: Text { text: submit.text; color: Color.foreground; opacity: submit.enabled ? 1 : 0.4; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; horizontalAlignment: Text.AlignHCenter }
+        contentItem: Text { textFormat: Text.PlainText; text: submit.text; color: Color.foreground; opacity: submit.enabled ? 1 : 0.4; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; horizontalAlignment: Text.AlignHCenter }
         background: Rectangle { radius: Style.space(5); color: root.tint(Color.accent, submit.down ? 0.35 : 0.2) }
       }
       Button {
@@ -123,12 +123,14 @@ Column {
         text: "Cancel"
         enabled: !root.busy
         onClicked: { root.resetJoin(); root.editingFinished() }
-        contentItem: Text { text: cancel.text; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; horizontalAlignment: Text.AlignHCenter }
+        contentItem: Text { textFormat: Text.PlainText; text: cancel.text; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; horizontalAlignment: Text.AlignHCenter }
         background: Rectangle { radius: Style.space(5); color: root.tint(Color.foreground, cancel.down ? 0.15 : 0.07) }
       }
     }
   }
   Text {
+    textFormat: Text.PlainText
+    objectName: "feedbackText"
     width: parent.width
     visible: text !== ""
     text: root.busy ? "Working…" : root.feedback
