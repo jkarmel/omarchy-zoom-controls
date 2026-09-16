@@ -8,6 +8,8 @@ The native Zoom desktop application is not supported.
 
 - In a meeting: copy invite link, mute/unmute, camera on/off, share/stop sharing,
   chat, participants, show Zoom, and leave.
+- Copy invite link preserves the invite supplied by Zoom, including its host,
+  join path, and passcode. Only local Join actions convert links for the web app.
 - Outside a meeting: Start meeting, Join meeting (link or ID), Open Zoom, and
   Join copied meeting when the clipboard contains a supported Zoom link.
 - Live microphone, camera, and sharing labels; keyboard navigation with arrows

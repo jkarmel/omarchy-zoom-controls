@@ -6,7 +6,7 @@ import {pathToFileURL,fileURLToPath} from 'node:url';
 import {loadConfig} from './config.mjs';
 import {CDP} from './cdp.mjs';
 import {zoomPage} from './page.mjs';
-import {meetingLink, meetingDestination, zoomHome} from './home.mjs';
+import {inviteLink, meetingLink, meetingDestination, zoomHome} from './home.mjs';
 let config, configError;
 try {config=await loadConfig();} catch(e) {configError=e;config={};}
 const profile=config.profile;
@@ -181,7 +181,7 @@ async function main(){
     }
     if(!result.ok) throw new Error('Zoom is no longer in that meeting. Reopen the menu.');
     if(result.link){
-      const link=meetingLink(result.link);
+      const link=inviteLink(result.link);
       if(!link||link.length>8192)throw new Error('Zoom did not provide a valid invite link.');
       const cmd=config.clipboardCommand||[fileURLToPath(new URL('../bin/copy-link',import.meta.url))];
       await exec(cmd[0],cmd.slice(1),{timeout:10000,maxBuffer:8192,custom:true,input:link});

@@ -1,5 +1,5 @@
-// Accept only Zoom meeting links, never arbitrary clipboard URLs or commands.
-export function meetingLink(value) {
+// Validate shareable invites without changing Zoom's host, route, or query.
+export function inviteLink(value) {
   if (typeof value !== 'string' || value.length > 4096) return null;
   try {
     const u = new URL(value.trim());
@@ -7,10 +7,19 @@ export function meetingLink(value) {
     const match = u.pathname.match(/^\/(?:j|wc\/join)\/(\d{9,11})\/?$/);
     const personal = u.pathname.match(/^\/my\/([a-zA-Z0-9._-]+)\/?$/);
     if (!match && !personal) return null;
-    const out = new URL(match ? '/wc/join/' + match[1] : '/my/' + personal[1], match ? 'https://app.zoom.us' : u.origin);
-    if (u.searchParams.has('pwd')) out.searchParams.set('pwd', u.searchParams.get('pwd'));
-    return out.href;
+    return u.href;
   } catch { return null; }
+}
+
+// The local plugin joins in the web app. Never use this conversion for sharing.
+export function meetingLink(value) {
+  const invite = inviteLink(value);
+  if (!invite) return null;
+  const u = new URL(invite);
+  const match = u.pathname.match(/^\/(?:j|wc\/join)\/(\d{9,11})\/?$/);
+  const out = new URL(match ? '/wc/join/' + match[1] : u.pathname.replace(/\/$/, ''), match ? 'https://app.zoom.us' : u.origin);
+  if (u.searchParams.has('pwd')) out.searchParams.set('pwd', u.searchParams.get('pwd'));
+  return out.href;
 }
 
 export function meetingDestination(value) {
