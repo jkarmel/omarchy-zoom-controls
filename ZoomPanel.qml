@@ -22,6 +22,9 @@ Ui.Panel {
   property var meetingState: ({state:"offline",capabilities:{}})
   property string feedback: ""
   property bool feedbackError: false
+  property string pendingReturnWorkspace: ""
+  property string runningAction: ""
+  property int returnRetries: 0
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("bin/zoom-controls").toString().replace(/^file:\/\//, ""))
   readonly property var helperEnvironment: {
     const result = {PATH: "/usr/bin"}
@@ -40,6 +43,17 @@ Ui.Panel {
   implicitHeight: button.implicitHeight
 
   function refresh() { if (!poll.running && !actionProcess.running) poll.running = true }
+  function clearReturnWorkspace() {
+    pendingReturnWorkspace = ""
+    returnRetries = 0
+    returnTimeout.stop()
+    returnRetry.stop()
+  }
+  function returnToWorkspace() {
+    if (!pendingReturnWorkspace || returnProcess.running) return
+    returnProcess.command = [helper, "focus-workspace", "", pendingReturnWorkspace]
+    returnProcess.running = true
+  }
   function act(action, value) {
     if (actionProcess.running) return
     if (action !== "show" && (!meetingState.checkedAt || Date.now() - meetingState.checkedAt > 8000)) {
@@ -47,15 +61,21 @@ Ui.Panel {
       refresh()
       return
     }
+    if (action === "share" || action === "stop-share") clearReturnWorkspace()
     feedback = ""
     feedbackError = false
+    runningAction = action
     actionProcess.command = [helper, action, meetingState.token || "", value || ""]
     actionProcess.running = true
     if (["share", "chat", "participants", "leave", "show", "start", "join", "join-clipboard"].indexOf(action) >= 0) close()
   }
   Component.onCompleted: refresh()
   onOpenedChanged: if (!opened) menu.resetJoin(); else if (opened) { refresh(); menu.cursor = -1; Qt.callLater(function() { keys.forceActiveFocus() }) }
+  onMeetingStateChanged: if (root.pendingReturnWorkspace !== "" && root.meetingState.sharing) root.returnToWorkspace()
   Timer { interval: root.opened ? 1000 : 2500; running: true; repeat: true; onTriggered: root.refresh() }
+  Timer { id: returnPoll; interval: 100; repeat: true; running: root.pendingReturnWorkspace !== ""; onTriggered: root.refresh() }
+  Timer { id: returnTimeout; interval: 60000; onTriggered: root.clearReturnWorkspace() }
+  Timer { id: returnRetry; interval: 1000; onTriggered: root.returnToWorkspace() }
   Process {
     id: poll
     clearEnvironment: true
@@ -83,10 +103,17 @@ Ui.Panel {
       waitForEnd: false
       onDataChanged: if (text.length > 65536) actionProcess.signal(15)
       onStreamFinished: {
+        const finishedAction = root.runningAction
+        root.runningAction = ""
         try {
           const r = JSON.parse(text)
           root.feedbackError = !r.ok
           root.feedback = r.error || r.message || ""
+          if (r.ok && finishedAction === "share" && typeof r.workspace === "string" && r.workspace !== "") {
+            root.pendingReturnWorkspace = r.workspace
+            root.returnRetries = 0
+            returnTimeout.restart()
+          }
         } catch (e) { root.feedbackError = true; root.feedback = "Zoom did not respond. Reopen the menu to check its state." }
         if (root.feedbackError && !root.opened) root.open()
       }
@@ -94,6 +121,19 @@ Ui.Panel {
     onRunningChanged: {
       if (running) actionDeadline.restart()
       else { actionDeadline.stop(); Qt.callLater(function() { root.refresh(); clearFeedback.restart() }) }
+    }
+  }
+  Process {
+    id: returnProcess
+    clearEnvironment: true
+    environment: root.helperEnvironment
+    stdout: StdioCollector { waitForEnd: true }
+    onExited: function(exitCode) {
+      if (exitCode === 0) return root.clearReturnWorkspace()
+      if (root.pendingReturnWorkspace !== "" && root.returnRetries < 1) {
+        root.returnRetries++
+        returnRetry.start()
+      } else root.clearReturnWorkspace()
     }
   }
   // Independent shell deadlines cover a stalled or broken helper supervisor.

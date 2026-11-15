@@ -18,6 +18,7 @@ try {
  assert.equal((await run('status')).state,'idle','Finds browser with a spaced profile path');
  await writeFile(config,JSON.stringify({profile:tmp+'/different-profile'}));
  assert.equal((await run('status')).state,'offline','Does not attach to another profile');
+ try{await run('focus-workspace','','bad\nname');assert.fail('Expected invalid workspace error')}catch(e){assert.equal(JSON.parse(e.stdout).error,'Invalid workspace to return to.','Invalid return workspaces never reach Hyprland')}
  const bin=tmp+'/bin';await mkdir(bin);
  const launcher=bin+'/custom-launcher';const captured=tmp+'/args';
  await writeFile(launcher,'#!/usr/bin/python3 -I\nimport sys\nopen('+JSON.stringify(captured)+',"w").write("\\n".join(sys.argv[1:])+"\\n")\n',{mode:0o755});
