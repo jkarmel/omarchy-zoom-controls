@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import qs.Commons
+import qs.Commons as Commons
 import "MenuModel.js" as Model
 
 Column {
@@ -23,7 +24,7 @@ Column {
   spacing: Style.space(12)
   width: Style.space(310)
 
-  function tint(color, amount) { return Qt.tint(Color.background, Qt.rgba(color.r, color.g, color.b, amount)) }
+  function tint(color, amount) { return Qt.tint(Commons.Color.background, Qt.rgba(color.r, color.g, color.b, amount)) }
   function activate(index) {
     if (!busy && index >= 0 && index < rows.length && rows[index].enabled)
       if (rows[index].action === "join") { joining = true; Qt.callLater(function() { joinField.forceActiveFocus() }) }
@@ -42,21 +43,21 @@ Column {
     Row {
       width: parent.width
       spacing: Style.space(8)
-      Text { textFormat: Text.PlainText; text: "Zoom"; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.title; font.bold: true }
+      Text { textFormat: Text.PlainText; text: "Zoom"; color: Commons.Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.title; font.bold: true }
       Rectangle {
         visible: root.meetingState.state === "meeting"
         anchors.verticalCenter: parent.verticalCenter
         width: liveText.implicitWidth + Style.space(12)
         height: liveText.implicitHeight + Style.space(5)
         radius: Style.space(4)
-        color: root.tint(root.meetingState.sharing ? Color.urgent : Color.accent, 0.17)
-        Text { textFormat: Text.PlainText; id: liveText; anchors.centerIn: parent; text: root.meetingState.sharing ? "SHARING" : "IN MEETING"; color: root.meetingState.sharing ? Color.urgent : Color.accent; font.family: root.themeFont.family; font.pixelSize: root.themeFont.caption; font.bold: true }
+        color: root.tint(root.meetingState.sharing ? Commons.Color.urgent : Commons.Color.accent, 0.17)
+        Text { textFormat: Text.PlainText; id: liveText; anchors.centerIn: parent; text: root.meetingState.sharing ? "SHARING" : "IN MEETING"; color: root.meetingState.sharing ? Commons.Color.urgent : Commons.Color.accent; font.family: root.themeFont.family; font.pixelSize: root.themeFont.caption; font.bold: true }
       }
     }
-    Text { textFormat: Text.PlainText; objectName: "meetingTitle"; width: parent.width; text: root.meetingState.title || "Open Zoom to connect"; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight }
-    Text { textFormat: Text.PlainText; width: parent.width; text: Model.summary(root.meetingState); color: Color.foreground; opacity: 0.65; font.family: root.themeFont.family; font.pixelSize: root.themeFont.caption; wrapMode: Text.Wrap }
+    Text { textFormat: Text.PlainText; objectName: "meetingTitle"; width: parent.width; text: root.meetingState.title || "Open Zoom to connect"; color: Commons.Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; wrapMode: Text.Wrap; maximumLineCount: 2; elide: Text.ElideRight }
+    Text { textFormat: Text.PlainText; width: parent.width; text: Model.summary(root.meetingState); color: Commons.Color.foreground; opacity: 0.65; font.family: root.themeFont.family; font.pixelSize: root.themeFont.caption; wrapMode: Text.Wrap }
   }
-  Rectangle { width: parent.width; height: 1; color: root.tint(Color.foreground, 0.15) }
+  Rectangle { width: parent.width; height: 1; color: root.tint(Commons.Color.foreground, 0.15) }
   Column {
     width: parent.width
     spacing: Style.space(2)
@@ -75,14 +76,14 @@ Column {
         onClicked: root.activate(index)
         background: Rectangle {
           radius: Style.space(5)
-          color: row.down ? root.tint(Color.accent, 0.23) : row.hovered || root.cursor === row.index ? root.tint(Color.foreground, 0.09) : "transparent"
+          color: row.down ? root.tint(Commons.Color.accent, 0.23) : row.hovered || root.cursor === row.index ? root.tint(Commons.Color.foreground, 0.09) : "transparent"
         }
         contentItem: Row {
           leftPadding: Style.space(9)
           spacing: Style.space(11)
           opacity: row.enabled ? 1 : 0.4
-          Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; width: Style.space(23); text: row.modelData.icon; color: row.modelData.danger ? Color.urgent : Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.title }
-          Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: row.modelData.label; color: row.modelData.danger ? Color.urgent : Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body }
+          Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; width: Style.space(23); text: row.modelData.icon; color: row.modelData.danger ? Commons.Color.urgent : Commons.Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.title }
+          Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: row.modelData.label; color: row.modelData.danger ? Commons.Color.urgent : Commons.Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body }
         }
       }
     }
@@ -99,11 +100,11 @@ Column {
       placeholderText: "Zoom link or meeting ID"
       Accessible.name: placeholderText
       selectByMouse: true
-      color: Color.foreground
-      placeholderTextColor: root.tint(Color.foreground, 0.5)
+      color: Commons.Color.foreground
+      placeholderTextColor: root.tint(Commons.Color.foreground, 0.5)
       font.family: root.themeFont.family
       font.pixelSize: root.themeFont.body
-      background: Rectangle { radius: Style.space(5); color: root.tint(Color.foreground, 0.04); border.color: joinField.activeFocus ? Color.accent : root.tint(Color.foreground, 0.2) }
+      background: Rectangle { radius: Style.space(5); color: root.tint(Commons.Color.foreground, 0.04); border.color: joinField.activeFocus ? Commons.Color.accent : root.tint(Commons.Color.foreground, 0.2) }
       onAccepted: root.submitJoin()
       Keys.onEscapePressed: { root.resetJoin(); root.editingFinished() }
     }
@@ -115,16 +116,16 @@ Column {
         text: "Join"
         enabled: !root.busy && joinField.text.trim() !== ""
         onClicked: root.submitJoin()
-        contentItem: Text { textFormat: Text.PlainText; text: submit.text; color: Color.foreground; opacity: submit.enabled ? 1 : 0.4; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; horizontalAlignment: Text.AlignHCenter }
-        background: Rectangle { radius: Style.space(5); color: root.tint(Color.accent, submit.down ? 0.35 : 0.2) }
+        contentItem: Text { textFormat: Text.PlainText; text: submit.text; color: Commons.Color.foreground; opacity: submit.enabled ? 1 : 0.4; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; horizontalAlignment: Text.AlignHCenter }
+        background: Rectangle { radius: Style.space(5); color: root.tint(Commons.Color.accent, submit.down ? 0.35 : 0.2) }
       }
       Button {
         id: cancel
         text: "Cancel"
         enabled: !root.busy
         onClicked: { root.resetJoin(); root.editingFinished() }
-        contentItem: Text { textFormat: Text.PlainText; text: cancel.text; color: Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; horizontalAlignment: Text.AlignHCenter }
-        background: Rectangle { radius: Style.space(5); color: root.tint(Color.foreground, cancel.down ? 0.15 : 0.07) }
+        contentItem: Text { textFormat: Text.PlainText; text: cancel.text; color: Commons.Color.foreground; font.family: root.themeFont.family; font.pixelSize: root.themeFont.body; horizontalAlignment: Text.AlignHCenter }
+        background: Rectangle { radius: Style.space(5); color: root.tint(Commons.Color.foreground, cancel.down ? 0.15 : 0.07) }
       }
     }
   }
@@ -134,7 +135,7 @@ Column {
     width: parent.width
     visible: text !== ""
     text: root.busy ? "Working…" : root.feedback
-    color: root.feedbackError ? Color.urgent : Color.foreground
+    color: root.feedbackError ? Commons.Color.urgent : Commons.Color.foreground
     opacity: root.feedbackError ? 1 : 0.7
     font.family: root.themeFont.family
     font.pixelSize: root.themeFont.caption
