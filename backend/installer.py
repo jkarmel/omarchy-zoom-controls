@@ -13,6 +13,7 @@ SOURCE = Path(__file__).resolve().parents[1]
 PLUGIN = 'jkarmel.zoom-controls'
 MARKER = '.zoom-controls-install'
 FILES = ('manifest.json', 'ZoomPanel.qml', 'MenuContent.qml', 'MenuModel.js',
+         'WindowPreview.qml', 'WindowPreview.js',
          'README.md', 'LICENSE', 'preview.png', 'backend', 'bin', 'docs')
 spec = importlib.util.spec_from_file_location('zoom_runtime', Path(__file__).with_name('runtime.py'))
 runtime = importlib.util.module_from_spec(spec)
