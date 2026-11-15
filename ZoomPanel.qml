@@ -1,9 +1,11 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import qs.Commons
 import qs.Ui as Ui
 import "MenuModel.js" as Model
+import "WindowPreview.js" as Preview
 
 Ui.Panel {
   id: root
@@ -22,6 +24,12 @@ Ui.Panel {
   property var meetingState: ({state:"offline",capabilities:{}})
   property string feedback: ""
   property bool feedbackError: false
+  property var zoomToplevel: null
+  function updateZoomToplevel() {
+    root.zoomToplevel = root.meetingState.state === "meeting"
+      ? Preview.findZoomToplevel(Hyprland.toplevels.values, Preview.ZOOM_CLASS)
+      : null
+  }
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("bin/zoom-controls").toString().replace(/^file:\/\//, ""))
   readonly property var helperEnvironment: {
     const result = {PATH: "/usr/bin"}
@@ -53,9 +61,14 @@ Ui.Panel {
     actionProcess.running = true
     if (["share", "chat", "participants", "leave", "show", "start", "join", "join-clipboard"].indexOf(action) >= 0) close()
   }
-  Component.onCompleted: refresh()
+  Component.onCompleted: { refresh(); updateZoomToplevel() }
   onOpenedChanged: if (!opened) menu.resetJoin(); else if (opened) { refresh(); menu.cursor = -1; Qt.callLater(function() { keys.forceActiveFocus() }) }
+  onMeetingStateChanged: updateZoomToplevel()
   Timer { interval: root.opened ? 1000 : 2500; running: true; repeat: true; onTriggered: root.refresh() }
+  Connections {
+    target: Hyprland.toplevels
+    function onValuesChanged() { root.updateZoomToplevel() }
+  }
   Process {
     id: poll
     clearEnvironment: true
@@ -118,7 +131,7 @@ Ui.Panel {
     open: root.opened
     focusTarget: keys
     contentWidth: popup.fittedContentWidth(Style.space(310))
-    contentHeight: popup.fittedContentHeight(menu.implicitHeight, Style.space(620))
+    contentHeight: popup.fittedContentHeight(content.implicitHeight, Style.space(620))
     Ui.PanelKeyCatcher {
       id: keys
       anchors.fill: parent
@@ -130,18 +143,28 @@ Ui.Panel {
       Flickable {
         anchors.fill: parent
         contentWidth: width
-        contentHeight: menu.implicitHeight
+        contentHeight: content.implicitHeight
         clip: true
         interactive: contentHeight > height
-        MenuContent {
-          id: menu
+        Column {
+          id: content
           width: parent.width
-          meetingState: root.meetingState
-          busy: actionProcess.running
-          feedback: root.feedback
-          feedbackError: root.feedbackError
-          onActionRequested: function(action, value) { root.act(action, value) }
-          onEditingFinished: keys.forceActiveFocus()
+          spacing: Style.space(12)
+          WindowPreview {
+            width: parent.width
+            toplevel: root.zoomToplevel
+            live: root.opened
+          }
+          MenuContent {
+            id: menu
+            width: parent.width
+            meetingState: root.meetingState
+            busy: actionProcess.running
+            feedback: root.feedback
+            feedbackError: root.feedbackError
+            onActionRequested: function(action, value) { root.act(action, value) }
+            onEditingFinished: keys.forceActiveFocus()
+          }
         }
       }
     }

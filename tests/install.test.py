@@ -48,6 +48,11 @@ class Installer(unittest.TestCase):
         self.assertFalse(self.target.exists())
         self.assertFalse(list(self.plugins.glob('.zoom-controls-stage-*')))
 
+    def test_install_packages_window_preview(self):
+        self.install()
+        self.assertTrue((self.target/'WindowPreview.qml').exists())
+        self.assertTrue((self.target/'WindowPreview.js').exists())
+
     def test_hostile_path_and_startup_environment(self):
         bins=self.base/'bin';bins.mkdir();sentinel=self.base/'executed'
         for name in ['omarchy','node','python3']:
