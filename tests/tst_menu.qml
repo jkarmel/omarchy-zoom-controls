@@ -1,13 +1,14 @@
 import QtQuick
 import QtTest
 import qs.Commons
+import qs.Commons as Commons
 import ".." as Zoom
 
 Rectangle {
   id: scene
   width: 360
   height: 480
-  color: Color.background
+  color: Commons.Color.background
   Zoom.MenuContent { id: menu; x: 24; y: 24; width: 312 }
   TestCase {
     name: "ZoomMenu"
@@ -61,12 +62,12 @@ Rectangle {
       menu.busy=true;compare(feedback.text,"Working…");compare(feedback.textFormat,Text.PlainText)
     }
     function test_visuals() {
-      Color.foreground="#e4e8ef";Color.background="#171b23";Color.accent="#86baff";Color.urgent="#f07c85"
+      Commons.Color.foreground="#e4e8ef";Commons.Color.background="#171b23";Commons.Color.accent="#86baff";Commons.Color.urgent="#f07c85"
       menu.meetingState=meeting(false)
       waitForRendering(menu);grabImage(scene).save('build/meeting-dark.png')
       menu.meetingState=meeting(true)
       waitForRendering(menu);grabImage(scene).save('build/sharing-dark.png')
-      Color.foreground="#263344";Color.background="#f4f5f7";Color.accent="#2457a8";Color.urgent="#b83046"
+      Commons.Color.foreground="#263344";Commons.Color.background="#f4f5f7";Commons.Color.accent="#2457a8";Commons.Color.urgent="#b83046"
       waitForRendering(menu);grabImage(scene).save('build/sharing-light.png')
       menu.meetingState={state:"idle",title:"No active meeting",capabilities:{}}
       waitForRendering(menu);grabImage(scene).save('build/idle-light.png')

@@ -1,7 +1,9 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui as Ui
 import "MenuModel.js" as Model
 
@@ -16,12 +18,19 @@ Ui.Panel {
     function close(): void { root.close() }
     function toggle(): void { root.toggle() }
     function refresh(): void { root.refresh() }
+    function toggleMute(): void { root.toggleMute() }
+    function toggleCamera(): void { root.toggleCamera() }
+    function toggleShare(): void { root.toggleShare() }
+    function leaveMeeting(): void { root.leaveMeeting() }
     function status(): string { return JSON.stringify(root.meetingState) }
     function actions(): string { return JSON.stringify({rows:menu.rows, joining:menu.joining, height:menu.implicitHeight}) }
   }
   property var meetingState: ({state:"offline",capabilities:{}})
   property string feedback: ""
   property bool feedbackError: false
+  readonly property bool inMeeting: meetingState.state === "meeting"
+  readonly property real liveDot: Style.space(5)
+  readonly property real liveWidth: Style.bar.iconFont * 2 + Style.spacing.lg + Style.spacing.xxs + (meetingState.sharing ? Style.spacing.lg + liveDot : 0)
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("bin/zoom-controls").toString().replace(/^file:\/\//, ""))
   readonly property var helperEnvironment: {
     const result = {PATH: "/usr/bin"}
@@ -52,6 +61,26 @@ Ui.Panel {
     actionProcess.command = [helper, action, meetingState.token || "", value || ""]
     actionProcess.running = true
     if (["share", "chat", "participants", "leave", "show", "start", "join", "join-clipboard"].indexOf(action) >= 0) close()
+  }
+  function toggleMute() {
+    const s = root.meetingState
+    if (s.state !== "meeting" || s.muted === null || !s.capabilities || !s.capabilities.mic) return
+    root.act(s.muted ? "unmute" : "mute")
+  }
+  function toggleCamera() {
+    const s = root.meetingState
+    if (s.state !== "meeting" || s.cameraOn === null || !s.capabilities || !s.capabilities.video) return
+    root.act(s.cameraOn ? "camera-off" : "camera-on")
+  }
+  function toggleShare() {
+    const s = root.meetingState
+    if (s.state !== "meeting" || !s.capabilities || !s.capabilities.share) return
+    root.act(s.sharing ? "stop-share" : "share")
+  }
+  function leaveMeeting() {
+    const s = root.meetingState
+    if (s.state !== "meeting" || !s.capabilities || !s.capabilities.leave) return
+    root.act("leave")
   }
   Component.onCompleted: refresh()
   onOpenedChanged: if (!opened) menu.resetJoin(); else if (opened) { refresh(); menu.cursor = -1; Qt.callLater(function() { keys.forceActiveFocus() }) }
@@ -100,13 +129,56 @@ Ui.Panel {
   Timer { id: pollDeadline; interval: 10000; onTriggered: poll.signal(15) }
   Timer { id: actionDeadline; interval: 65000; onTriggered: actionProcess.signal(15) }
   Timer { id: clearFeedback; interval: 7000; onTriggered: root.feedback = "" }
+  Component {
+    id: liveStatusIcon
+    Item {
+      Row {
+        anchors.centerIn: parent
+        spacing: Style.spacing.lg
+        Text {
+          id: micGlyph
+          textFormat: Text.PlainText
+          text: root.meetingState.muted === false ? "󰍬" : "󰍭"
+          color: root.meetingState.muted === false ? Commons.Color.accent : root.barForeground
+          opacity: root.meetingState.muted === null ? 0.3 : root.meetingState.muted ? 0.55 : 1
+          font.family: Style.font.family
+          font.pixelSize: Style.bar.iconFont
+          renderType: Text.NativeRendering
+        }
+        Text {
+          textFormat: Text.PlainText
+          text: root.meetingState.cameraOn === true ? "󰕧" : "󰕨"
+          color: root.meetingState.cameraOn === true ? Commons.Color.accent : root.barForeground
+          opacity: root.meetingState.cameraOn === null ? 0.3 : root.meetingState.cameraOn ? 1 : 0.55
+          font.family: Style.font.family
+          font.pixelSize: Style.bar.iconFont
+          renderType: Text.NativeRendering
+        }
+        Item {
+          visible: root.meetingState.sharing
+          width: visible ? root.liveDot : 0
+          height: visible ? micGlyph.implicitHeight : 0
+          Rectangle {
+            anchors.centerIn: parent
+            width: root.liveDot
+            height: root.liveDot
+            radius: root.liveDot / 2
+            color: Commons.Color.urgent
+          }
+        }
+      }
+    }
+  }
   Ui.BarIconButton {
     id: button
     anchors.fill: parent
     bar: root.bar
     text: "󰕧"
     fontSize: 17
-    foreground: root.meetingState.sharing ? Color.urgent : root.meetingState.state === "meeting" ? Color.accent : root.barForeground
+    slotSize: root.inMeeting ? root.liveWidth + Style.spacing.sm : Style.bar.iconSlot
+    opticalSize: root.inMeeting ? root.liveWidth : Style.bar.iconCanvas
+    iconComponent: root.inMeeting ? liveStatusIcon : null
+    foreground: root.meetingState.sharing ? Commons.Color.urgent : root.meetingState.state === "meeting" ? Commons.Color.accent : root.barForeground
     tooltipText: "Zoom · " + Model.summary(root.meetingState)
     onPressed: root.toggle()
   }
